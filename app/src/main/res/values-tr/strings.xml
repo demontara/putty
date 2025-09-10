@@ -203,4 +203,21 @@
   <string name="color_bg_label">AR: %1$d</string>
   <string name="image_description_connected">Bağlandı.</string>
   <string name="image_description_show_keyboard">Klavye göster.</string>
+
+  <!-- Host export/import functionality - Turkish translations -->
+  <string name="list_menu_export_hosts">Sunucuları dışa aktar</string>
+  <string name="list_menu_import_hosts">Sunucuları içe aktar</string>
+  <string name="export_hosts_success">Sunucular başarıyla %s dosyasına aktarıldı</string>
+  <string name="export_hosts_failed">Sunucular aktarılamadı: %s</string>
+  <string name="import_hosts_success">%d sunucu başarıyla içe aktarıldı</string>
+  <string name="import_hosts_failed">Sunucular içe aktarılamadı: %s</string>
+  <string name="import_hosts_confirm_title">Sunucuları İçe Aktar</string>
+  <string name="import_hosts_confirm_message">Bu işlem %d sunucuyu içe aktaracak. Aynı rumuzlu mevcut sunucular değiştirilecek. Devam edilsin mi?</string>
+  <string name="import_hosts_confirm_positive">İçe Aktar</string>
+  <string name="import_hosts_confirm_negative">İptal</string>
+  <string name="export_hosts_chooser_title">Sunucuları dosyaya aktar</string>
+  <string name="import_hosts_chooser_title">İçe aktarılacak sunucu dosyasını seç</string>
+  <string name="export_hosts_no_hosts">Aktarılacak sunucu bulunamadı</string>
+  <string name="export_hosts_preparing">Dışa aktarma hazırlanıyor...</string>
+  <string name="import_hosts_parsing">Sunucu dosyası ayrıştırılıyor...</string>
 </resources>
