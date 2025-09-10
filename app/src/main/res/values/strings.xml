@@ -676,4 +676,21 @@
 	<string name="notification_requirement_explanation">Notification permission is required to display running sessions in the background</string>
 	<string name="continue_anyway">Continue without</string>
 	<string name="allow">Allow</string>
+
+	<!-- Host export/import functionality -->
+	<string name="list_menu_export_hosts">Export hosts</string>
+	<string name="list_menu_import_hosts">Import hosts</string>
+	<string name="export_hosts_success">Hosts exported successfully to %s</string>
+	<string name="export_hosts_failed">Failed to export hosts: %s</string>
+	<string name="import_hosts_success">Successfully imported %d hosts</string>
+	<string name="import_hosts_failed">Failed to import hosts: %s</string>
+	<string name="import_hosts_confirm_title">Import Hosts</string>
+	<string name="import_hosts_confirm_message">This will import %d hosts. Existing hosts with the same nickname will be overwritten. Continue?</string>
+	<string name="import_hosts_confirm_positive">Import</string>
+	<string name="import_hosts_confirm_negative">Cancel</string>
+	<string name="export_hosts_chooser_title">Export hosts to file</string>
+	<string name="import_hosts_chooser_title">Choose hosts file to import</string>
+	<string name="export_hosts_no_hosts">No hosts to export</string>
+	<string name="export_hosts_preparing">Preparing export...</string>
+	<string name="import_hosts_parsing">Parsing hosts file...</string>
 </resources>

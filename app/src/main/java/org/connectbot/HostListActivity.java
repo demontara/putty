@@ -61,9 +61,13 @@ import org.connectbot.service.TerminalBridge;
 import org.connectbot.service.TerminalManager;
 import org.connectbot.transport.TransportFactory;
 import org.connectbot.util.HostDatabase;
+import org.connectbot.util.HostExportImport;
 import org.connectbot.util.PreferenceConstants;
 
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 
 public class HostListActivity extends AppCompatListActivity implements OnHostStatusChangedListener {
 	public final static String TAG = "CB.HostListActivity";
@@ -96,6 +100,10 @@ public class HostListActivity extends AppCompatListActivity implements OnHostSta
 	 * only brought to the foreground via the notification button to disconnect all hosts.
 	 */
 	private boolean closeOnDisconnectAll = true;
+
+	// ActivityResultLaunchers for export/import functionality
+	private ActivityResultLauncher<String> exportHostsLauncher;
+	private ActivityResultLauncher<String[]> importHostsLauncher;
 
 	private ServiceConnection connection = new ServiceConnection() {
 		@Override
@@ -285,6 +293,9 @@ public class HostListActivity extends AppCompatListActivity implements OnHostSta
 			public void onNothingSelected(AdapterView<?> arg0) {}
 		});
 
+		// Initialize ActivityResultLaunchers for export/import
+		initializeActivityResultLaunchers();
+
 		this.inflater = LayoutInflater.from(this);
 	}
 
@@ -347,6 +358,26 @@ public class HostListActivity extends AppCompatListActivity implements OnHostSta
 			public boolean onMenuItemClick(MenuItem menuItem) {
 				disconnectAll();
 				return false;
+			}
+		});
+
+		MenuItem exportHosts = menu.add(R.string.list_menu_export_hosts);
+		exportHosts.setIcon(android.R.drawable.ic_menu_save);
+		exportHosts.setOnMenuItemClickListener(new OnMenuItemClickListener() {
+			@Override
+			public boolean onMenuItemClick(MenuItem menuItem) {
+				exportHosts();
+				return true;
+			}
+		});
+
+		MenuItem importHosts = menu.add(R.string.list_menu_import_hosts);
+		importHosts.setIcon(android.R.drawable.ic_menu_add);
+		importHosts.setOnMenuItemClickListener(new OnMenuItemClickListener() {
+			@Override
+			public boolean onMenuItemClick(MenuItem menuItem) {
+				importHosts();
+				return true;
 			}
 		});
 
@@ -690,5 +721,155 @@ public class HostListActivity extends AppCompatListActivity implements OnHostSta
 		public int getItemCount() {
 			return hosts.size();
 		}
+	}
+
+	/**
+	 * Initialize ActivityResultLaunchers for export/import functionality
+	 */
+	private void initializeActivityResultLaunchers() {
+		// Launcher for exporting hosts to a file
+		exportHostsLauncher = registerForActivityResult(
+				new ActivityResultContracts.CreateDocument("application/json"),
+				uri -> {
+					if (uri != null) {
+						performExportHosts(uri);
+					}
+				});
+
+		// Launcher for importing hosts from a file
+		importHostsLauncher = registerForActivityResult(
+				new ActivityResultContracts.OpenDocument(),
+				uri -> {
+					if (uri != null) {
+						performImportHosts(uri);
+					}
+				});
+	}
+
+	/**
+	 * Start the export hosts process
+	 */
+	private void exportHosts() {
+		if (hosts == null || hosts.isEmpty()) {
+			new androidx.appcompat.app.AlertDialog.Builder(this, R.style.AlertDialogTheme)
+					.setMessage(R.string.export_hosts_no_hosts)
+					.setPositiveButton(android.R.string.ok, null)
+					.show();
+			return;
+		}
+
+		String fileName = "connectbot_hosts_" + 
+				new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(new Date()) + ".json";
+		exportHostsLauncher.launch(fileName);
+	}
+
+	/**
+	 * Start the import hosts process
+	 */
+	private void importHosts() {
+		importHostsLauncher.launch(new String[]{"application/json", "text/plain"});
+	}
+
+	/**
+	 * Perform the actual export operation
+	 */
+	private void performExportHosts(Uri uri) {
+		new Thread(() -> {
+			try {
+				HostExportImport.exportHosts(this, uri, hosts);
+				runOnUiThread(() -> {
+					String message = getString(R.string.export_hosts_success, uri.getLastPathSegment());
+					new androidx.appcompat.app.AlertDialog.Builder(this, R.style.AlertDialogTheme)
+							.setMessage(message)
+							.setPositiveButton(android.R.string.ok, null)
+							.show();
+				});
+			} catch (Exception e) {
+				Log.e(TAG, "Export failed", e);
+				runOnUiThread(() -> {
+					String message = getString(R.string.export_hosts_failed, e.getMessage());
+					new androidx.appcompat.app.AlertDialog.Builder(this, R.style.AlertDialogTheme)
+							.setMessage(message)
+							.setPositiveButton(android.R.string.ok, null)
+							.show();
+				});
+			}
+		}).start();
+	}
+
+	/**
+	 * Perform the actual import operation
+	 */
+	private void performImportHosts(Uri uri) {
+		new Thread(() -> {
+			try {
+				List<HostBean> importedHosts = HostExportImport.importHosts(this, uri);
+				
+				runOnUiThread(() -> {
+					// Show confirmation dialog
+					String message = getString(R.string.import_hosts_confirm_message, importedHosts.size());
+					new androidx.appcompat.app.AlertDialog.Builder(this, R.style.AlertDialogTheme)
+							.setTitle(R.string.import_hosts_confirm_title)
+							.setMessage(message)
+							.setPositiveButton(R.string.import_hosts_confirm_positive, (dialog, which) -> {
+								// Perform the actual import in background
+								new Thread(() -> {
+									try {
+										int importedCount = 0;
+										for (HostBean host : importedHosts) {
+											// Check if host with same nickname exists
+											List<HostBean> existingHosts = hostdb.getHosts(false);
+											boolean exists = false;
+											for (HostBean existing : existingHosts) {
+												if (existing.getNickname().equals(host.getNickname())) {
+													// Update existing host
+													host.setId(existing.getId());
+													hostdb.saveHost(host);
+													exists = true;
+													break;
+												}
+											}
+											if (!exists) {
+												// Create new host
+												hostdb.saveHost(host);
+											}
+											importedCount++;
+										}
+										
+										final int finalImportedCount = importedCount;
+										runOnUiThread(() -> {
+											updateList();
+											String successMessage = getString(R.string.import_hosts_success, finalImportedCount);
+											new androidx.appcompat.app.AlertDialog.Builder(this, R.style.AlertDialogTheme)
+													.setMessage(successMessage)
+													.setPositiveButton(android.R.string.ok, null)
+													.show();
+										});
+									} catch (Exception e) {
+										Log.e(TAG, "Import save failed", e);
+										runOnUiThread(() -> {
+											String message = getString(R.string.import_hosts_failed, e.getMessage());
+											new androidx.appcompat.app.AlertDialog.Builder(this, R.style.AlertDialogTheme)
+													.setMessage(message)
+													.setPositiveButton(android.R.string.ok, null)
+													.show();
+										});
+									}
+								}).start();
+							})
+							.setNegativeButton(R.string.import_hosts_confirm_negative, null)
+							.show();
+				});
+			} catch (Exception e) {
+				Log.e(TAG, "Import failed", e);
+				runOnUiThread(() -> {
+					String message = getString(R.string.import_hosts_failed, e.getMessage());
+					new androidx.appcompat.app.AlertDialog.Builder(this, R.style.AlertDialogTheme)
+							.setMessage(message)
+							.setPositiveButton(android.R.string.ok, null)
+							.show();
+				});
+			}
+		}).start();
 	}
 }
